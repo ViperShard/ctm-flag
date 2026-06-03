@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
-    "dev": "webpack --mode development --watch"
+    "dev": "webpack --mode development --watch",
+    "package": "npm run build && rm -f ctm-flag-extension.zip && cd dist && zip -qr ../ctm-flag-extension.zip . && cd .. && echo \"\\nPackaged → ctm-flag-extension.zip  (share this file with teammates)\""
   },
   "dependencies": {
     "firebase": "^10.13.2"

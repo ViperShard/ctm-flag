@@ -127,6 +127,35 @@ won't be asked again; change it anytime via the panel header).
 
 ---
 
+## Sharing with your team (no setup for them)
+
+Your teammates do **not** repeat any of the above — no Firebase, no config, no
+build. You do it once, then hand them a finished folder.
+
+1. After step 4 (your Firebase config is in `src/firebase.js`), run:
+
+   ```bash
+   npm run package
+   ```
+
+   This builds the extension and zips it into **`ctm-flag-extension.zip`** with
+   your config already baked in.
+
+2. Share that zip privately — Slack, email, or a shared drive. **Do not commit
+   it or upload it to the public repo** (it contains your Firebase config; it's
+   git-ignored for that reason).
+
+3. Teammates follow [`INSTALL-FOR-TEAMMATES.md`](INSTALL-FOR-TEAMMATES.md):
+   unzip → `edge://extensions` → Developer mode → **Load unpacked** → pick the
+   folder. ~2 minutes, no accounts.
+
+> Pushed an update? Re-run `npm run package` and send the new zip; teammates
+> replace the folder and click **↻** on the extension card. (For true one-click
+> installs + auto-updates, the same build can later be published unlisted to the
+> Edge Add-ons store.)
+
+---
+
 ## Adjusting the selectors (if buttons don't appear)
 
 CTM's exact HTML isn't known ahead of time, so the script uses best-guess CSS
