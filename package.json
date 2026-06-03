@@ -1,12 +1,12 @@
 {
-  "name": "ctm-flag",
-  "version": "1.0.0",
-  "description": "Lightweight call annotation tool that injects into Call Tracking Metrics (CTM) and lets your team flag calls with shared, real-time notes.",
+  "name": "ctm-tag",
+  "version": "1.1.0",
+  "description": "Lightweight call annotation tool that injects into Call Tracking Metrics (CTM) and lets your team tag calls with shared, real-time notes.",
   "private": true,
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
-    "package": "npm run build && rm -f ctm-flag-extension.zip && cd dist && zip -qr ../ctm-flag-extension.zip . && cd .. && echo \"\\nPackaged → ctm-flag-extension.zip  (share this file with teammates)\""
+    "package": "npm run build && rm -f ctm-tag-extension.zip && cd dist && zip -qr ../ctm-tag-extension.zip . && cd .. && echo \"\\nPackaged → ctm-tag-extension.zip  (share this file with teammates)\""
   },
   "dependencies": {
     "firebase": "^10.13.2"

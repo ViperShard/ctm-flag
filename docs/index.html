@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CTM Flag — flag calls & share notes in Call Tracking Metrics</title>
-<meta name="description" content="A lightweight Chrome/Edge extension that lets your team flag Call Tracking Metrics calls with shared notes, visible to everyone in real time." />
+<title>CTM Tag — tag calls & share notes in Call Tracking Metrics</title>
+<meta name="description" content="A lightweight Chrome/Edge extension that lets your team tag Call Tracking Metrics calls with shared notes, visible to everyone in real time." />
 <link rel="icon" type="image/png" href="favicon.png" />
 <style>
   /* ── Soft blue / grey / white / black palette ───────────────────────── */
@@ -211,7 +211,7 @@
 <!-- ── NAV ──────────────────────────────────────────────────────────────── -->
 <header class="nav">
   <div class="wrap nav-inner">
-    <div class="brand"><img src="icon128.png" alt="" /> CTM&nbsp;Flag</div>
+    <div class="brand"><img src="icon128.png" alt="" /> CTM&nbsp;Tag</div>
     <nav class="nav-links">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
@@ -226,10 +226,10 @@
   <div class="wrap hero-grid">
     <div>
       <span class="eyebrow">📌 Internal tool for Call Tracking Metrics</span>
-      <h1>Flag calls. Share notes. <span class="accent">In real time.</span></h1>
+      <h1>Tag calls. Share notes. <span class="accent">In real time.</span></h1>
       <p class="lead">
-        CTM Flag adds a quiet pin button to every call in your Call Tracking
-        Metrics dashboard. Flag a call with a note or question, and everyone on
+        CTM Tag adds a quiet pin button to every call in your Call Tracking
+        Metrics dashboard. Tag a call with a note or question, and everyone on
         your team sees it instantly — right inside CTM, no refresh.
       </p>
       <div class="hero-cta">
@@ -257,7 +257,7 @@
         </div>
 
         <div class="mock-panel">
-          <div class="mock-panel-head">📌 Flagged Calls <span class="mock-badge">2</span></div>
+          <div class="mock-panel-head">📌 Tagged Calls <span class="mock-badge">2</span></div>
           <div class="mock-flag">
             <div class="meta"><span class="by">Dana</span><span class="at">Jun 2, 9:41 AM</span></div>
             <div class="note">Caller asked for a refund — needs a manager callback today.</div>
@@ -285,18 +285,18 @@
     <div class="features">
       <div class="card">
         <div class="ico">📌</div>
-        <h3>Flag any call</h3>
-        <p>A small pin on every call row. Click to add a note or question; the pin fills amber once flagged.</p>
+        <h3>Tag any call</h3>
+        <p>A small pin on every call row. Click to add a note or question; the pin fills amber once tagged.</p>
       </div>
       <div class="card">
         <div class="ico">⚡</div>
         <h3>Real-time for everyone</h3>
-        <p>Backed by Firebase Firestore. Add or remove a flag and teammates see it within about a second — no refresh.</p>
+        <p>Backed by Firebase Firestore. Add or remove a tag and teammates see it within about a second — no refresh.</p>
       </div>
       <div class="card">
         <div class="ico">🗂️</div>
-        <h3>Flagged Calls panel</h3>
-        <p>A slide-down list of every flagged call: the note, who flagged it, when, and a jump-to-call link.</p>
+        <h3>Tagged Calls panel</h3>
+        <p>A slide-down list of every tagged call: the note, who tagged it, when, and a jump-to-call link.</p>
       </div>
       <div class="card">
         <div class="ico">🎯</div>
@@ -323,7 +323,7 @@
     <div class="wrap">
       <div class="section-head">
         <div class="kicker">How it works</div>
-        <h2>From install to flagging in minutes</h2>
+        <h2>From install to tagging in minutes</h2>
         <p>One person sets up a free Firebase database; everyone else just installs the extension.</p>
       </div>
       <div class="steps">
@@ -340,11 +340,11 @@
         <div class="step">
           <div class="n">3</div>
           <h3>Open CTM</h3>
-          <p>Pins appear on every call and a “Flagged Calls” button lands in the toolbar.</p>
+          <p>Pins appear on every call and a “Tagged Calls” button lands in the toolbar.</p>
         </div>
         <div class="step">
           <div class="n">4</div>
-          <h3>Flag &amp; share</h3>
+          <h3>Tag &amp; share</h3>
           <p>Add a note. Your whole team sees it live — and you see theirs.</p>
         </div>
       </div>
@@ -390,7 +390,7 @@ npm run <span class="k">build</span>
 <!-- ── FOOTER ───────────────────────────────────────────────────────────── -->
 <footer>
   <div class="wrap foot-inner">
-    <div class="foot-brand"><img src="favicon.png" alt="" /> CTM Flag <span class="pill" data-version-label>v1.0.0</span></div>
+    <div class="foot-brand"><img src="favicon.png" alt="" /> CTM Tag <span class="pill" data-version-label>v1.0.0</span></div>
     <div>
       Open-source · MIT · <a id="ghFoot" href="#">GitHub</a>
       &nbsp;·&nbsp; Not affiliated with Call Tracking Metrics.
@@ -410,7 +410,7 @@ npm run <span class="k">build</span>
     if (a) a.href = repoUrl;
   });
   var readme = document.getElementById("ghReadme");
-  if (readme) readme.href = repoUrl + "#setup";
+  if (readme) readme.href = repoUrl + "/blob/main/DEVELOPER.md";
 
   // Self-updating version pill: read the live manifest.json from the repo so the
   // footer shows the current version after each release, with no HTML edit.

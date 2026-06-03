@@ -1,10 +1,10 @@
 /**
- * content.js — the entire CTM Flag UI and behaviour.
+ * content.js — the entire CTM Tag UI and behaviour.
  *
  * This script is injected by the browser into every Call Tracking Metrics page
  * (see manifest.json "matches"). It:
  *   1. Finds the call rows in CTM's table and drops a small 📌 button on each.
- *   2. Adds a "Flagged Calls" button to CTM's toolbar.
+ *   2. Adds a "Tagged Calls" button to CTM's toolbar.
  *   3. Builds a slide-down panel listing every flagged call.
  *   4. Keeps all of the above in sync with Firebase Firestore in real time, so
  *      a flag added by one teammate appears for everyone within ~1 second.
@@ -46,7 +46,7 @@ import {
     callRow: ".call-row, [data-call-id], tr.call, tr[data-id], .activity-row",
     // An element (inside a row) that carries the call's unique ID.
     callId: "[data-call-id], .call-id, .call-number, [data-id]",
-    // The header / toolbar area where the "Flagged Calls" button is added.
+    // The header / toolbar area where the "Tagged Calls" button is added.
     toolbar: ".toolbar, .header-actions, .page-header, header, nav",
   };
 
@@ -89,7 +89,7 @@ import {
     if (!name && promptIfMissing) {
       name = (
         window.prompt(
-          "CTM Flag — enter your name so teammates know who flagged a call:"
+          "CTM Tag — enter your name so teammates know who tagged a call:"
         ) || ""
       ).trim();
       if (name) writeName(name);
@@ -99,7 +99,7 @@ import {
   // Let the user change their display name from the panel.
   function changeUserName() {
     const next = (
-      window.prompt("Your display name on flags:", readName()) || ""
+      window.prompt("Your display name on tags:", readName()) || ""
     ).trim();
     if (next) {
       writeName(next);
@@ -157,7 +157,7 @@ import {
     try {
       rows = Array.from(document.querySelectorAll(CTM_SELECTORS.callRow));
     } catch (e) {
-      console.error("[CTM Flag] Bad callRow selector:", e);
+      console.error("[CTM Tag] Bad callRow selector:", e);
     }
     return rows;
   }
@@ -228,12 +228,12 @@ import {
     if (!loggedScanOnce) {
       loggedScanOnce = true;
       console.log(
-        "%c[CTM Flag] active",
+        "%c[CTM Tag] active",
         "color:#3b6ea5;font-weight:bold;font-size:12px"
       );
-      console.log("[CTM Flag] Selectors in use:", CTM_SELECTORS);
+      console.log("[CTM Tag] Selectors in use:", CTM_SELECTORS);
       console.log(
-        "[CTM Flag] Found " +
+        "[CTM Tag] Found " +
           rows.length +
           " candidate call rows; " +
           withId +
@@ -241,12 +241,12 @@ import {
       );
       if (withId === 0) {
         console.warn(
-          "[CTM Flag] No call IDs detected. Edit CTM_SELECTORS at the top of " +
+          "[CTM Tag] No call IDs detected. Edit CTM_SELECTORS at the top of " +
             "content.js to match CTM's real markup, then rebuild. " +
             "See README → 'Adjusting the selectors'."
         );
       } else {
-        console.log("[CTM Flag] Sample call IDs:", sample);
+        console.log("[CTM Tag] Sample call IDs:", sample);
       }
     }
   }
@@ -281,7 +281,7 @@ import {
   function setButtonState(btn, callId) {
     const flagged = flagsByCallId.has(callId);
     btn.classList.toggle("is-flagged", flagged);
-    btn.title = flagged ? "Flagged — click to view" : "Flag this call";
+    btn.title = flagged ? "Tagged — click to view" : "Tag this call";
   }
 
   function updateAllButtonStates() {
@@ -336,14 +336,14 @@ import {
     if (ta) ta.focus();
   }
 
-  // Editor shown for an UNFLAGGED call: textarea + Flag it / Cancel.
+  // Editor shown for an UNTAGGED call: textarea + Tag it / Cancel.
   function buildNewEditor(pop, callId) {
     const ta = el("textarea", "ctmflag-textarea");
     ta.placeholder = "Note or question about this call...";
     ta.rows = 3;
 
     const actions = el("div", "ctmflag-editor-actions");
-    const flagBtn = el("button", "ctmflag-btn-primary", "Flag it");
+    const flagBtn = el("button", "ctmflag-btn-primary", "Tag it");
     flagBtn.type = "button";
     const cancel = el("button", "ctmflag-btn-ghost", "Cancel");
     cancel.type = "button";
@@ -351,14 +351,14 @@ import {
     flagBtn.addEventListener("click", async () => {
       const name = getUserName(true);
       if (!name) {
-        toast("Add your name first so flags can be attributed.");
+        toast("Add your name first so tags can be attributed.");
         return;
       }
       flagBtn.disabled = true;
       const ok = await saveFlag(callId, ta.value.trim(), name);
       if (!ok) {
         flagBtn.disabled = false;
-        toast("Couldn't save the flag — check Firebase setup (see console).");
+        toast("Couldn't save the tag — check Firebase setup (see console).");
         return;
       }
       closeEditor();
@@ -375,7 +375,7 @@ import {
     pop.appendChild(actions);
   }
 
-  // Editor shown for an ALREADY-FLAGGED call: note + who/when + Delete flag.
+  // Editor shown for an ALREADY-TAGGED call: note + who/when + Delete tag.
   function buildViewEditor(pop, flag) {
     const meta = el("div", "ctmflag-editor-meta");
     meta.appendChild(
@@ -390,7 +390,7 @@ import {
     );
 
     const actions = el("div", "ctmflag-editor-actions");
-    const del = el("button", "ctmflag-btn-danger", "Delete flag");
+    const del = el("button", "ctmflag-btn-danger", "Delete tag");
     del.type = "button";
     const close = el("button", "ctmflag-btn-ghost", "Close");
     close.type = "button";
@@ -400,7 +400,7 @@ import {
       const ok = await removeFlag(flag.callId);
       if (!ok) {
         del.disabled = false;
-        toast("Couldn't delete the flag — check console.");
+        toast("Couldn't delete the tag — check console.");
         return;
       }
       closeEditor();
@@ -429,7 +429,7 @@ import {
     pop.style.width = width + "px";
   }
 
-  /* ── Toolbar "Flagged Calls" button ─────────────────────────────────────── */
+  /* ── Toolbar "Tagged Calls" button ─────────────────────────────────────── */
 
   function injectToolbarButton() {
     if (document.getElementById("ctmflag-toolbar-btn")) return;
@@ -439,7 +439,7 @@ import {
     btn.type = "button";
     btn.innerHTML =
       '<span class="ctmflag-tb-pin">📌</span>' +
-      '<span class="ctmflag-tb-label">Flagged Calls</span>' +
+      '<span class="ctmflag-tb-label">Tagged Calls</span>' +
       '<span class="ctmflag-tb-badge" hidden>0</span>';
     btn.addEventListener("click", togglePanel);
 
@@ -473,7 +473,7 @@ import {
     }
   }
 
-  /* ── The slide-down Flagged Calls panel ─────────────────────────────────── */
+  /* ── The slide-down Tagged Calls panel ─────────────────────────────────── */
 
   function buildPanel() {
     if (document.getElementById("ctmflag-panel")) return;
@@ -483,12 +483,12 @@ import {
 
     const header = el("div", "ctmflag-panel-header");
     const title = el("div", "ctmflag-panel-title");
-    title.innerHTML = '<span class="ctmflag-tb-pin">📌</span> Flagged Calls';
+    title.innerHTML = '<span class="ctmflag-tb-pin">📌</span> Tagged Calls';
 
     const right = el("div", "ctmflag-panel-head-right");
     const identity = el("button", "ctmflag-identity");
     identity.type = "button";
-    identity.title = "Click to change the name shown on your flags";
+    identity.title = "Click to change the name shown on your tags";
     identity.addEventListener("click", changeUserName);
     const close = el("button", "ctmflag-panel-close", "✕");
     close.type = "button";
@@ -531,7 +531,7 @@ import {
         empty.textContent =
           "Firebase isn't set up yet — " + (getInitErrorMessage() || "");
       } else {
-        empty.textContent = "No flagged calls.";
+        empty.textContent = "No tagged calls.";
       }
       list.appendChild(empty);
       return;
@@ -699,14 +699,14 @@ import {
 
       if (!isReady()) {
         console.warn(
-          "[CTM Flag] Firebase not ready: " +
+          "[CTM Tag] Firebase not ready: " +
             (getInitErrorMessage() || "unknown") +
-            " — the UI loads but flags won't sync until you fill in src/firebase.js."
+            " — the UI loads but tags won't sync until you fill in src/firebase.config.js."
         );
       }
     } catch (err) {
       // Absolute last resort: never let our script break the CTM page.
-      console.error("[CTM Flag] Fatal error during init (CTM page unaffected):", err);
+      console.error("[CTM Tag] Fatal error during init (CTM page unaffected):", err);
     }
   }
 

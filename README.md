@@ -1,233 +1,93 @@
-# CTM Flag
+# CTM Tag
 
-A lightweight call-annotation tool for the **Call Tracking Metrics (CTM)** web
-interface. It adds a small 📌 button to every call so anyone on your team (with
-the extension installed) can flag a call with a note or question — and everyone
-else sees that flag **in real time**, no refresh needed.
+**Tag a Call Tracking Metrics call with a note, and your whole team sees it
+instantly.** CTM Tag adds a small pin button to every call in CTM. Click it,
+type a note or question, and everyone with the extension sees that tag in real
+time — right inside CTM, no refresh.
 
-It injects directly into CTM's existing layout. No popups, no new tabs — the
-buttons and the "Flagged Calls" panel appear inline and are styled to feel
-native to CTM.
-
-> Internal workplace tool. Flags are shared through a single Firebase Firestore
-> database that you create (free tier). Anyone with the extension installed and
-> pointed at that database sees the same flags.
+> 💡 **This is different from CTM's own red "Flag" button.** Tagging a call here
+> doesn't change anything in CTM — it just shares a private note with your
+> teammates who also have CTM Tag installed.
 
 ---
 
-## What it does
+## 📥 Installing (about 2 minutes — no accounts, no coding)
 
-- **📌 on every call row** — click to add a note and flag the call. Already-
-  flagged calls show a filled amber pin; click it to read the note or delete it.
-- **"Flagged Calls" button** in the CTM toolbar with a live count badge.
-- **Slide-down panel** listing every flagged call (newest first): the note, who
-  flagged it, when, a **→ Go to call** link that scrolls to and highlights the
-  row, and a **✕ Remove** button.
-- **Real-time sync** — add or remove a flag and it appears/disappears for every
-  teammate within about a second, via a Firestore `onSnapshot` listener.
-- **Fails safe** — if Firebase isn't configured or is unreachable, the CTM page
-  is never broken; the UI just tells you to finish setup (details in the
-  browser console).
+You don't set up anything with Firebase and you don't build anything. You just
+turn the extension on.
 
----
+You should have received a file called **`ctm-tag-extension.zip`** (from Slack,
+email, or a shared drive). Have it handy.
 
-## Works in Chrome, Edge, and other Chromium browsers
+> Works in **Microsoft Edge** and **Google Chrome** — steps are nearly
+> identical; differences are noted.
 
-This is a standard Manifest V3 extension. It loads in Chrome, **Edge**, Brave,
-Opera, Vivaldi, and Arc with no changes. (A `browser_specific_settings.gecko`
-block is included for Firefox; Safari needs Apple's converter — see bottom.)
+### Steps
 
-The "who flagged this" name is stored with the browser's standard `localStorage`
-(not `chrome.storage`), so it behaves identically in Edge and Chrome. Only your
-display name is stored locally — the flags themselves all live in Firebase.
+1. **Unzip the file.** Double-click **`ctm-tag-extension.zip`**. You'll get a
+   folder named **`ctm-tag-extension`**.
+   📌 **Put it somewhere permanent** (e.g. Documents) and **don't delete or move
+   it** — the extension runs from this folder.
 
----
+2. **Open your Extensions page:**
+   - **Edge:** click the **`···`** menu (top-right) → **Extensions** → **Manage
+     extensions**. *(Or type `edge://extensions` in the address bar.)*
+   - **Chrome:** type `chrome://extensions` in the address bar.
 
-## Setup
+3. **Turn on "Developer mode"** (a switch on the page).
+   - **Edge:** bottom-left corner. **Chrome:** top-right corner.
 
-You'll do this once. Steps 1–3 create a free database; steps 4–6 build and load
-the extension.
+4. **Click "Load unpacked"** and select the **`ctm-tag-extension`** folder you
+   unzipped. *(Pick the folder that has `manifest.json` inside it.)*
 
-### 1. Install build tools
+5. **Done! ✅** Open Call Tracking Metrics — you'll see the pin buttons appear.
 
-```bash
-npm install
-```
-
-### 2. Create a free Firebase project + Firestore database
-
-1. Go to <https://console.firebase.google.com> → **Add project** (the free
-   "Spark" plan is fine; no credit card). Finish the wizard, then **click the
-   project tile to open it** — the sidebar only appears once you're inside.
-2. In the **left sidebar**, **Build** is a category heading (not a button) —
-   click it to expand, then click **Firestore Database**. (No sidebar? Click
-   the **☰** icon top-left. Fastest shortcut: type `Firestore` in the search
-   bar at the top of the console.)
-3. On the Firestore Database page, click the blue **Create database** button →
-   choose **Start in test mode** → pick a location → **Enable**.
-4. Click the **gear icon → Project settings**.
-5. Under **Your apps**, click the **`</>`** (web) icon to register a web app.
-   Give it any nickname. You do **not** need Firebase Hosting.
-6. Firebase shows a `firebaseConfig = { ... }` snippet. Keep that tab open.
-
-### 3. Set the Firestore security rules
-
-In the console: **Firestore Database → Rules**, paste this, and **Publish**:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /flags/{callId} {
-      allow read, write: if true;   // internal tool, no auth (MVP)
-    }
-  }
-}
-```
-
-> ⚠️ `if true` means anyone who knows your project ID can read/write the `flags`
-> collection. That's intentional for an internal MVP with no login. If you want
-> it locked down later, add Firebase Auth and change the rule to
-> `if request.auth != null`.
-
-### 4. Paste your config into the extension
-
-Open [`src/firebase.js`](src/firebase.js) and replace the three placeholder
-values near the top with the ones from your `firebaseConfig` snippet:
-
-```js
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-};
-```
-
-(The `apiKey` is **not** a secret for web Firebase apps — it's a public project
-identifier. Access is controlled by the rules above, not by hiding the key.)
-
-### 5. Build
-
-```bash
-npm run build
-```
-
-This bundles Firebase into a single file and writes the finished extension to
-the **`dist/`** folder.
-
-### 6. Load it in your browser
-
-1. Open `chrome://extensions` (or `edge://extensions`).
-2. Turn on **Developer mode** (top-right).
-3. Click **Load unpacked** and select the **`dist/`** folder.
-4. Open CTM. The 📌 buttons and the "Flagged Calls" toolbar button appear.
-
-The first time you flag a call it asks for your name (stored locally so you
-won't be asked again; change it anytime via the panel header).
+That "developer extensions" notice Edge/Chrome shows is **normal** for tools
+installed this way. You can keep it.
 
 ---
 
-## Sharing with your team (no setup for them)
+## 📍 Where to find it in CTM
 
-Your teammates do **not** repeat any of the above — no Firebase, no config, no
-build. You do it once, then hand them a finished folder.
+Each call gets a small **pin icon** (circled in red below), next to CTM's own
+Email and Flag buttons:
 
-1. After step 4 (your Firebase config is in `src/firebase.js`), run:
+![Where the CTM Tag pin icon appears on a call](screenshots/where-is-the-tag-icon.jpeg)
 
-   ```bash
-   npm run package
-   ```
-
-   This builds the extension and zips it into **`ctm-flag-extension.zip`** with
-   your config already baked in.
-
-2. Share that zip privately — Slack, email, or a shared drive. **Do not commit
-   it or upload it to the public repo** (it contains your Firebase config; it's
-   git-ignored for that reason).
-
-3. Teammates follow [`INSTALL-FOR-TEAMMATES.md`](INSTALL-FOR-TEAMMATES.md):
-   unzip → `edge://extensions` → Developer mode → **Load unpacked** → pick the
-   folder. ~2 minutes, no accounts.
-
-> Pushed an update? Re-run `npm run package` and send the new zip; teammates
-> replace the folder and click **↻** on the extension card. (For true one-click
-> installs + auto-updates, the same build can later be published unlisted to the
-> Edge Add-ons store.)
+And at the **top of the page** there's a **"Tagged Calls"** button with a count
+badge. Click it to slide down a list of every tagged call.
 
 ---
 
-## Adjusting the selectors (if buttons don't appear)
+## 🏷️ How to use it
 
-CTM's exact HTML isn't known ahead of time, so the script uses best-guess CSS
-selectors and **logs what it found** to the browser console.
+- **Tag a call:** click the **pin** on a call row → type a note → click
+  **"Tag it."** The pin turns amber to show it's tagged.
+- **Read or delete a tag:** click an amber pin to see the note, who added it, and
+  when — with a **"Delete tag"** option.
+- **See all tagged calls:** click the **"Tagged Calls"** button at the top. The
+  panel lists every tag (newest first) with:
+  - the note and who tagged it,
+  - **"→ Go to call"** — jumps to that call on the page and highlights it,
+  - **"✕ Remove"** — deletes the tag.
+- **It's live for everyone.** When you add or remove a tag, your teammates see
+  it within about a second, and you see theirs — no refresh needed.
 
-1. On a CTM call-log page, open DevTools (**F12**) → **Console**.
-2. Look for `[CTM Flag]` lines. They tell you how many call rows and call IDs
-   were detected. If it says **0 call IDs detected**, the selectors need tuning.
-3. Right-click a real call row → **Inspect** to see CTM's actual markup.
-4. Edit the `CTM_SELECTORS` object at the top of
-   [`src/content.js`](src/content.js):
-
-   ```js
-   const CTM_SELECTORS = {
-     callRow: ".call-row, [data-call-id], tr.call, tr[data-id], .activity-row",
-     callId:  "[data-call-id], .call-id, .call-number, [data-id]",
-     toolbar: ".toolbar, .header-actions, .page-header, header, nav",
-   };
-   ```
-
-   Add the class/attribute you see in CTM's HTML to the matching line.
-5. `npm run build` again, then in `chrome://extensions` click the **↻** on the
-   CTM Flag card and refresh the CTM tab.
+The first time you tag a call, it asks for **your name** (so teammates know who
+tagged it). Type it once — you can change it anytime from the panel header.
 
 ---
 
-## Project layout
+## 🛠️ Troubleshooting
 
-```
-ctm-flag/
-├── src/
-│   ├── content.js     injected into CTM — all the UI + behaviour
-│   ├── firebase.js    Firebase init + read/write/delete/listen
-│   └── style.css      injected styles (matches CTM's clean look)
-├── icons/             extension + site icons (neutral amber pin)
-├── docs/              GitHub Pages landing page
-├── manifest.json      MV3 config
-├── package.json       build scripts + deps
-├── webpack.config.js  bundles Firebase, copies static files into dist/
-└── dist/              ← built output; this is what you "Load unpacked"
-```
-
-> **Note on `manifest.json` permissions / `web_accessible_resources`:** none are
-> needed. The script and styles are injected via `content_scripts`, the display
-> name uses `localStorage` (not the `storage` permission), and Firestore's HTTPS
-> endpoints serve permissive CORS, so no host permissions are required either.
-> Fewer permissions = a smaller install warning and a simpler trust story.
+- **No pins on the calls?** Make sure you're on a CTM page that lists calls. If
+  they're still missing, press **F12** → **Console** tab, look for lines that
+  start with **`[CTM Tag]`**, and send a screenshot to whoever shared the
+  extension with you — those messages say exactly what to fix.
+- **Got an updated zip?** Unzip it over the old folder (replace the contents),
+  then on the Extensions page click the **↻ reload** icon on the CTM Tag card.
 
 ---
 
-## Development
-
-```bash
-npm run dev     # rebuild automatically on every save (then click ↻ + refresh)
-npm run build   # one-off production build
-```
-
-After any change, bump `version` in `manifest.json` so teammates can tell
-they're on the latest build.
-
----
-
-## Other browsers
-
-- **Firefox** — `about:debugging#/runtime/this-firefox` → **Load Temporary
-  Add-on** → pick `dist/manifest.json`. (Temporary add-ons unload on restart;
-  a permanent install needs AMO signing.)
-- **Safari** — the source is standard MV3 and converts with Apple's
-  `safari-web-extension-converter` (an Xcode tool) without code changes.
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+*Setting this up for your team for the first time, or want to change how it
+works? See [DEVELOPER.md](DEVELOPER.md).*
