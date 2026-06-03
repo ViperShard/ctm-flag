@@ -19,6 +19,8 @@ import {
   subscribeFlags,
   saveFlag,
   removeFlag,
+  markRead,
+  setStatus,
   isReady,
   getInitErrorMessage,
 } from "./firebase.js";
@@ -50,6 +52,33 @@ import {
     toolbar: ".toolbar, .header-actions, .page-header, header, nav",
   };
 
+  /* ─────────────────────────────────────────────────────────────────────────
+   *  CTM_CLIENT — how to figure out which CTM "client"/account a call belongs
+   *  to. This powers the Inbox grouping and (later) the per-client access wall.
+   *  Like the selectors above, these are best guesses that get logged to the
+   *  console so they're easy to tune once we see CTM's real URLs/markup.
+   *
+   *    urlPatterns  — regexes tried against the page URL; first capture group
+   *                   becomes the clientId.
+   *    nameSelectors — DOM elements whose text is the human client/account name
+   *                   (e.g. an account switcher).
+   * ──────────────────────────────────────────────────────────────────────── */
+  const CTM_CLIENT = {
+    urlPatterns: [
+      /[?&]account_id=(\d+)/i,
+      /\/accounts?\/(\d+)/i,
+      /\/clients?\/(\d+)/i,
+      /\/a\/(\d+)/i,
+    ],
+    nameSelectors: [
+      "[data-account-name]",
+      ".account-switcher .selected",
+      ".current-account",
+      ".account-name",
+      ".navbar-brand",
+    ],
+  };
+
   // Marker attributes so we recognise our own injected elements and never
   // double-inject or react to them in the MutationObserver.
   const ATTR_BTN = "data-ctmflag-btn"; // on each row's flag button
@@ -62,10 +91,12 @@ import {
   const NAME_KEY = "ctmflag_user";
 
   /* ── State ──────────────────────────────────────────────────────────────── */
-  let flagsByCallId = new Map(); // callId -> { callId, note, flaggedBy, timestamp }
+  let flagsByCallId = new Map(); // callId -> tag object
   let panelOpen = false;
   let openEditorEl = null; // the currently-open inline note editor, if any
   let loggedScanOnce = false;
+  let inboxFilter = "open"; // "open" | "resolved" | "all"
+  let loggedClientOnce = false;
 
   /* ── Identity (flaggedBy) ───────────────────────────────────────────────── */
 
@@ -105,6 +136,78 @@ import {
       writeName(next);
       updateIdentityLabel();
     }
+  }
+
+  // A stable per-browser id used to track who has READ a tag (read/unread).
+  // Random + local; when real sign-in lands (Increment B) this becomes the uid.
+  function getDeviceId() {
+    let id = "";
+    try {
+      id = localStorage.getItem("ctmflag_device") || "";
+    } catch (e) {}
+    if (!id) {
+      id =
+        "d_" +
+        Math.random().toString(36).slice(2) +
+        Math.random().toString(36).slice(2);
+      try {
+        localStorage.setItem("ctmflag_device", id);
+      } catch (e) {}
+    }
+    return id;
+  }
+
+  /* ── Which CTM client/account are we looking at? ─────────────────────────── */
+
+  function detectClient() {
+    const url = location.href;
+    let clientId = "";
+    for (const re of CTM_CLIENT.urlPatterns) {
+      const m = url.match(re);
+      if (m && m[1]) {
+        clientId = m[1];
+        break;
+      }
+    }
+
+    let clientName = "";
+    for (const sel of CTM_CLIENT.nameSelectors) {
+      let node = null;
+      try {
+        node = document.querySelector(sel);
+      } catch (e) {}
+      if (node) {
+        clientName =
+          (node.getAttribute("data-account-name") || node.textContent || "")
+            .trim()
+            .slice(0, 80);
+        if (clientName) break;
+      }
+    }
+
+    // Fallbacks so grouping still works even when detection misses.
+    if (!clientId) clientId = clientName || location.hostname;
+    if (!clientName) clientName = clientId || "Unknown client";
+
+    if (!loggedClientOnce) {
+      loggedClientOnce = true;
+      console.log(
+        "[CTM Tag] Detected client:",
+        { clientId, clientName },
+        "— if this looks wrong, tune CTM_CLIENT at the top of content.js."
+      );
+    }
+    return { clientId, clientName };
+  }
+
+  // Best deep link back to a specific call: prefer a permalink in the row, else
+  // the current page URL.
+  function getCallUrl(row) {
+    if (row) {
+      const link = row.querySelector('a[href*="call"], a[href*="activity"]');
+      if (link && link.href) return link.href;
+    }
+    return location.href;
   }
 
   /* ── Small helpers ──────────────────────────────────────────────────────── */
@@ -355,7 +458,15 @@ import {
         return;
       }
       flagBtn.disabled = true;
-      const ok = await saveFlag(callId, ta.value.trim(), name);
+      const row = findRowByCallId(callId);
+      const client = detectClient();
+      const ok = await saveFlag(callId, {
+        note: ta.value.trim(),
+        taggedBy: name,
+        clientId: client.clientId,
+        clientName: client.clientName,
+        callUrl: getCallUrl(row),
+      });
       if (!ok) {
         flagBtn.disabled = false;
         toast("Couldn't save the tag — check Firebase setup (see console).");
@@ -375,27 +486,47 @@ import {
     pop.appendChild(actions);
   }
 
-  // Editor shown for an ALREADY-TAGGED call: note + who/when + Delete tag.
+  // Editor shown for an ALREADY-TAGGED call: note + who/when + Resolve/Delete.
   function buildViewEditor(pop, flag) {
+    // Opening the note counts as reading it.
+    markRead(flag.callId, getDeviceId());
+
     const meta = el("div", "ctmflag-editor-meta");
-    meta.appendChild(
-      el("span", "ctmflag-editor-by", flag.flaggedBy || "Unknown")
-    );
+    meta.appendChild(el("span", "ctmflag-editor-by", flag.flaggedBy || "Unknown"));
     meta.appendChild(el("span", "ctmflag-editor-when", formatTime(flag.timestamp)));
 
-    const note = el(
-      "div",
-      "ctmflag-editor-note",
-      flag.note || "(no note added)"
-    );
+    const note = el("div", "ctmflag-editor-note", flag.note || "(no note added)");
 
     const actions = el("div", "ctmflag-editor-actions");
-    const del = el("button", "ctmflag-btn-danger", "Delete tag");
-    del.type = "button";
-    const close = el("button", "ctmflag-btn-ghost", "Close");
-    close.type = "button";
 
+    const resolved = flag.status === "resolved";
+    const resolveBtn = el(
+      "button",
+      "ctmflag-btn-primary",
+      resolved ? "Reopen" : "Resolve"
+    );
+    resolveBtn.type = "button";
+    resolveBtn.addEventListener("click", async () => {
+      resolveBtn.disabled = true;
+      const ok = await setStatus(flag.callId, resolved ? "open" : "resolved");
+      if (!ok) {
+        resolveBtn.disabled = false;
+        toast("Couldn't update — check console.");
+        return;
+      }
+      closeEditor();
+    });
+
+    const del = el("button", "ctmflag-btn-danger", "Delete");
+    del.type = "button";
     del.addEventListener("click", async () => {
+      if (
+        !window.confirm(
+          "Delete this tag for everyone? This can't be undone.\n" +
+            "(Use Resolve to archive it instead — nothing is lost.)"
+        )
+      )
+        return;
       del.disabled = true;
       const ok = await removeFlag(flag.callId);
       if (!ok) {
@@ -405,9 +536,13 @@ import {
       }
       closeEditor();
     });
+
+    const close = el("button", "ctmflag-btn-ghost", "Close");
+    close.type = "button";
     close.addEventListener("click", closeEditor);
 
     actions.appendChild(del);
+    actions.appendChild(resolveBtn);
     actions.appendChild(close);
     pop.appendChild(meta);
     pop.appendChild(note);
@@ -450,10 +585,19 @@ import {
     (document.body || document.documentElement).appendChild(btn);
   }
 
+  // Has THIS browser read the tag yet?
+  function isUnread(flag) {
+    const id = getDeviceId();
+    return !(flag.readBy && flag.readBy[id]);
+  }
+
   function updateBadge() {
     const badge = document.querySelector("#ctmflag-toolbar-btn .ctmflag-tb-badge");
     if (!badge) return;
-    const count = flagsByCallId.size;
+    let count = 0;
+    flagsByCallId.forEach((f) => {
+      if ((f.status || "open") !== "resolved" && isUnread(f)) count++;
+    });
     if (count > 0) {
       badge.textContent = String(count);
       badge.hidden = false;
@@ -472,7 +616,7 @@ import {
 
     const header = el("div", "ctmflag-panel-header");
     const title = el("div", "ctmflag-panel-title");
-    title.innerHTML = '<span class="ctmflag-tb-pin">📌</span> Tagged Calls';
+    title.innerHTML = '<span class="ctmflag-tb-pin">📌</span> Inbox';
 
     const right = el("div", "ctmflag-panel-head-right");
     const identity = el("button", "ctmflag-identity");
@@ -489,9 +633,36 @@ import {
     header.appendChild(title);
     header.appendChild(right);
 
+    // Filter bar: Open / Resolved / All.
+    const filters = el("div", "ctmflag-filters");
+    [
+      ["open", "Open"],
+      ["resolved", "Resolved"],
+      ["all", "All"],
+    ].forEach(([key, label]) => {
+      const b = el("button", "ctmflag-filter", label);
+      b.type = "button";
+      b.setAttribute("data-filter", key);
+      if (key === inboxFilter) b.classList.add("is-active");
+      b.addEventListener("click", () => {
+        inboxFilter = key;
+        filters
+          .querySelectorAll(".ctmflag-filter")
+          .forEach((x) =>
+            x.classList.toggle(
+              "is-active",
+              x.getAttribute("data-filter") === key
+            )
+          );
+        renderPanel();
+      });
+      filters.appendChild(b);
+    });
+
     const list = el("div", "ctmflag-panel-list");
 
     panel.appendChild(header);
+    panel.appendChild(filters);
     panel.appendChild(list);
     document.body.appendChild(panel);
 
@@ -510,9 +681,15 @@ import {
     if (!list) return;
     list.textContent = ""; // clear
 
-    const flags = Array.from(flagsByCallId.values()).sort(
-      (a, b) => (b.timestamp || 0) - (a.timestamp || 0)
-    );
+    let flags = Array.from(flagsByCallId.values());
+
+    // Open / Resolved / All filter.
+    flags = flags.filter((f) => {
+      const status = f.status || "open";
+      if (inboxFilter === "open") return status !== "resolved";
+      if (inboxFilter === "resolved") return status === "resolved";
+      return true;
+    });
 
     if (flags.length === 0) {
       const empty = el("div", "ctmflag-empty");
@@ -520,47 +697,136 @@ import {
         empty.textContent =
           "Firebase isn't set up yet — " + (getInitErrorMessage() || "");
       } else {
-        empty.textContent = "No tagged calls.";
+        empty.textContent =
+          inboxFilter === "resolved" ? "No resolved tags." : "No tagged calls.";
       }
       list.appendChild(empty);
       return;
     }
 
-    flags.forEach((flag) => {
-      const item = el("div", "ctmflag-item");
-
-      const top = el("div", "ctmflag-item-top");
-      top.appendChild(el("span", "ctmflag-item-by", flag.flaggedBy || "Unknown"));
-      top.appendChild(el("span", "ctmflag-item-time", formatTime(flag.timestamp)));
-
-      const note = el(
-        "div",
-        "ctmflag-item-note",
-        flag.note || "(no note added)"
-      );
-
-      const actions = el("div", "ctmflag-item-actions");
-      const go = el("button", "ctmflag-link", "→ Go to call");
-      go.type = "button";
-      go.addEventListener("click", () => goToCall(flag.callId));
-      const remove = el("button", "ctmflag-remove", "✕ Remove");
-      remove.type = "button";
-      remove.addEventListener("click", async () => {
-        remove.disabled = true;
-        const ok = await removeFlag(flag.callId);
-        if (!ok) {
-          remove.disabled = false;
-          toast("Couldn't remove — check console.");
-        }
-      });
-
-      actions.appendChild(go);
-      actions.appendChild(remove);
-      item.appendChild(top);
-      item.appendChild(note);
-      item.appendChild(actions);
-      list.appendChild(item);
+    // Group by client; newest tag first within a group; groups ordered by their
+    // newest tag.
+    const groups = new Map(); // clientId -> { name, items: [] }
+    flags.forEach((f) => {
+      const cid = f.clientId || "unknown";
+      if (!groups.has(cid)) {
+        groups.set(cid, { name: f.clientName || "Unknown client", items: [] });
+      }
+      groups.get(cid).items.push(f);
     });
+
+    const ordered = Array.from(groups.values()).map((g) => {
+      g.items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      g.newest = g.items[0] ? g.items[0].timestamp || 0 : 0;
+      return g;
+    });
+    ordered.sort((a, b) => b.newest - a.newest);
+
+    ordered.forEach((g) => {
+      // Show a client header only when more than one client is present, so a
+      // single-account setup stays clean.
+      if (groups.size > 1) {
+        const head = el("div", "ctmflag-group-head");
+        head.appendChild(el("span", "ctmflag-group-name", g.name));
+        const unread = g.items.filter(
+          (f) => (f.status || "open") !== "resolved" && isUnread(f)
+        ).length;
+        if (unread > 0) {
+          head.appendChild(
+            el("span", "ctmflag-group-unread", unread + " unread")
+          );
+        }
+        list.appendChild(head);
+      }
+      g.items.forEach((flag) => list.appendChild(renderInboxItem(flag)));
+    });
+  }
+
+  function renderInboxItem(flag) {
+    const resolved = (flag.status || "open") === "resolved";
+    const unread = !resolved && isUnread(flag);
+
+    const item = el(
+      "div",
+      "ctmflag-item" + (unread ? " is-unread" : "") + (resolved ? " is-resolved" : "")
+    );
+
+    const top = el("div", "ctmflag-item-top");
+    const byline = el("div", "ctmflag-item-byline");
+    if (unread) byline.appendChild(el("span", "ctmflag-unread-dot"));
+    byline.appendChild(el("span", "ctmflag-item-by", flag.flaggedBy || "Unknown"));
+    if (resolved) byline.appendChild(el("span", "ctmflag-status-pill", "Resolved"));
+    top.appendChild(byline);
+    top.appendChild(el("span", "ctmflag-item-time", formatTime(flag.timestamp)));
+
+    const note = el("div", "ctmflag-item-note", flag.note || "(no note added)");
+
+    const actions = el("div", "ctmflag-item-actions");
+    const go = el("button", "ctmflag-link", "→ Open call");
+    go.type = "button";
+    go.addEventListener("click", () => openCall(flag));
+
+    const resolveBtn = el(
+      "button",
+      "ctmflag-action",
+      resolved ? "Reopen" : "Resolve"
+    );
+    resolveBtn.type = "button";
+    resolveBtn.addEventListener("click", async () => {
+      resolveBtn.disabled = true;
+      const ok = await setStatus(flag.callId, resolved ? "open" : "resolved");
+      if (!ok) {
+        resolveBtn.disabled = false;
+        toast("Couldn't update — check console.");
+      }
+    });
+
+    const remove = el("button", "ctmflag-remove", "✕");
+    remove.type = "button";
+    remove.title = "Delete permanently";
+    remove.addEventListener("click", async () => {
+      if (
+        !window.confirm(
+          "Delete this tag for everyone? This can't be undone.\n" +
+            "(Resolve archives it instead — nothing is lost.)"
+        )
+      )
+        return;
+      remove.disabled = true;
+      const ok = await removeFlag(flag.callId);
+      if (!ok) {
+        remove.disabled = false;
+        toast("Couldn't remove — check console.");
+      }
+    });
+
+    actions.appendChild(go);
+    actions.appendChild(resolveBtn);
+    actions.appendChild(remove);
+    item.appendChild(top);
+    item.appendChild(note);
+    item.appendChild(actions);
+    return item;
+  }
+
+  // From the inbox: jump to a call. If its row is on the current page, scroll +
+  // highlight; otherwise navigate to its saved deep link. Either way, mark read.
+  function openCall(flag) {
+    markRead(flag.callId, getDeviceId());
+    injectRowButtons();
+    const target = findRowByCallId(flag.callId);
+    if (target) {
+      closePanel();
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("ctmflag-highlight");
+      setTimeout(() => target.classList.remove("ctmflag-highlight"), 2000);
+      return;
+    }
+    if (flag.callUrl) {
+      location.href = flag.callUrl; // different client/page — navigate there
+    } else {
+      toast("Call " + flag.callId + " is on a different page — search for it.");
+    }
   }
 
   function openPanel() {
