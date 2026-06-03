@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef2f7"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8a23f"/>
+      <stop offset="1" stop-color="#cf7d18"/>
+    </linearGradient>
+  </defs>
+  <!-- soft rounded-square background -->
+  <rect x="3" y="3" width="122" height="122" rx="26" fill="url(#bg)" stroke="#dbe2ea" stroke-width="2"/>
+  <!-- amber location pin, centered -->
+  <g transform="translate(23.2,23.2) scale(3.4)">
+    <path fill="url(#pin)" stroke="#b96f12" stroke-width="0.5"
+      d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+  </g>
+</svg>

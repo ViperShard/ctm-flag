@@ -1,0 +1,416 @@
+/*
+ * style.css — visuals for everything CTM Flag injects.
+ *
+ * Design goals:
+ *   - Look native to CTM: clean, minimal, neutral greys + a single accent.
+ *   - Stay out of the way: small, unobtrusive controls until clicked.
+ *   - Easy to retheme: every colour is a CSS variable in :root below, so you
+ *     can match CTM's palette by changing a handful of values.
+ *
+ * All class names are prefixed `ctmflag-` so nothing here can collide with
+ * CTM's own styles.
+ */
+
+:root {
+  /* The flag accent — a soft amber, per spec (the "flagged" pin colour). */
+  --ctmflag-accent: #e0922f;
+  --ctmflag-accent-strong: #c97d1e;
+  --ctmflag-accent-soft: #fbf0df;
+
+  /* Neutral chrome — soft blue/grey/white/black so it sits quietly in CTM. */
+  --ctmflag-ink: #2b3038; /* near-black text */
+  --ctmflag-grey: #67707c; /* secondary text */
+  --ctmflag-grey-soft: #9aa3af; /* faint icons / placeholders */
+  --ctmflag-blue: #3b6ea5; /* links / focus */
+  --ctmflag-border: #e1e6ec;
+  --ctmflag-bg: #ffffff;
+  --ctmflag-bg-soft: #f5f7fa;
+  --ctmflag-danger: #c2604f; /* muted red for destructive actions */
+
+  --ctmflag-radius: 8px;
+  --ctmflag-shadow: 0 8px 28px rgba(33, 43, 54, 0.16);
+  --ctmflag-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* Sit above CTM's own UI but below the absolute browser-chrome ceiling. */
+  --ctmflag-z: 2147483000;
+}
+
+/* ── Per-row pin button ─────────────────────────────────────────────────── */
+.ctmflag-row-btn-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.ctmflag-row-btn {
+  all: unset; /* shed any inherited CTM button styling */
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.ctmflag-row-btn:hover {
+  background: var(--ctmflag-bg-soft);
+}
+.ctmflag-row-btn .ctmflag-pin {
+  fill: none;
+  stroke: var(--ctmflag-grey-soft);
+  stroke-width: 1.7;
+  transition: fill 0.12s ease, stroke 0.12s ease;
+}
+.ctmflag-row-btn:hover .ctmflag-pin {
+  stroke: var(--ctmflag-accent);
+}
+.ctmflag-row-btn.is-flagged .ctmflag-pin {
+  fill: var(--ctmflag-accent);
+  stroke: var(--ctmflag-accent-strong);
+}
+
+/* ── Toolbar / floating "Flagged Calls" button ──────────────────────────── */
+.ctmflag-toolbar-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ctmflag-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ctmflag-ink);
+  background: var(--ctmflag-bg);
+  border: 1px solid var(--ctmflag-border);
+  border-radius: var(--ctmflag-radius);
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.ctmflag-toolbar-btn:hover {
+  border-color: var(--ctmflag-accent);
+  box-shadow: 0 1px 4px rgba(33, 43, 54, 0.08);
+}
+.ctmflag-in-toolbar {
+  margin-left: 8px;
+}
+.ctmflag-floating {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: var(--ctmflag-z);
+  box-shadow: var(--ctmflag-shadow);
+}
+.ctmflag-tb-pin {
+  font-size: 13px;
+  line-height: 1;
+}
+.ctmflag-tb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ctmflag-accent);
+  border-radius: 9px;
+}
+
+/* ── Slide-down panel ───────────────────────────────────────────────────── */
+.ctmflag-panel {
+  box-sizing: border-box;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 720px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--ctmflag-font);
+  color: var(--ctmflag-ink);
+  background: var(--ctmflag-bg);
+  border: 1px solid var(--ctmflag-border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: var(--ctmflag-shadow);
+  z-index: var(--ctmflag-z);
+  transform: translateY(-105%);
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+  pointer-events: none;
+}
+.ctmflag-panel.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.ctmflag-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ctmflag-border);
+  background: var(--ctmflag-bg-soft);
+  border-radius: 0 0 0 0;
+}
+.ctmflag-panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ctmflag-panel-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ctmflag-identity {
+  all: unset;
+  box-sizing: border-box;
+  font-size: 12px;
+  color: var(--ctmflag-blue);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.ctmflag-identity:hover {
+  background: #eaf0f7;
+  text-decoration: underline;
+}
+.ctmflag-panel-close {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ctmflag-grey);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+.ctmflag-panel-close:hover {
+  background: #e7ebf1;
+  color: var(--ctmflag-ink);
+}
+.ctmflag-panel-list {
+  overflow-y: auto;
+  padding: 8px;
+}
+.ctmflag-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ctmflag-grey);
+  font-size: 13px;
+}
+
+/* Each flagged-call entry */
+.ctmflag-item {
+  padding: 12px 14px;
+  border: 1px solid var(--ctmflag-border);
+  border-radius: var(--ctmflag-radius);
+  margin: 6px 4px;
+  background: var(--ctmflag-bg);
+}
+.ctmflag-item:hover {
+  border-color: #d2dae4;
+}
+.ctmflag-item-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.ctmflag-item-by {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ctmflag-ink);
+}
+.ctmflag-item-time {
+  font-size: 11.5px;
+  color: var(--ctmflag-grey-soft);
+  white-space: nowrap;
+}
+.ctmflag-item-note {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ctmflag-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 8px;
+}
+.ctmflag-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ctmflag-link {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ctmflag-blue);
+}
+.ctmflag-link:hover {
+  text-decoration: underline;
+}
+.ctmflag-remove {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--ctmflag-grey);
+}
+.ctmflag-remove:hover {
+  color: var(--ctmflag-danger);
+}
+
+/* ── Inline note editor (popover near a row's pin) ──────────────────────── */
+.ctmflag-editor {
+  box-sizing: border-box;
+  font-family: var(--ctmflag-font);
+  color: var(--ctmflag-ink);
+  background: var(--ctmflag-bg);
+  border: 1px solid var(--ctmflag-border);
+  border-radius: 10px;
+  box-shadow: var(--ctmflag-shadow);
+  padding: 12px;
+  z-index: var(--ctmflag-z);
+}
+.ctmflag-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  font-family: var(--ctmflag-font);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ctmflag-ink);
+  border: 1px solid var(--ctmflag-border);
+  border-radius: 6px;
+  padding: 8px 9px;
+  outline: none;
+  background: var(--ctmflag-bg);
+}
+.ctmflag-textarea:focus {
+  border-color: var(--ctmflag-blue);
+  box-shadow: 0 0 0 3px rgba(59, 110, 165, 0.14);
+}
+.ctmflag-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ctmflag-btn-primary,
+.ctmflag-btn-ghost,
+.ctmflag-btn-danger {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-family: var(--ctmflag-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 6px;
+  text-align: center;
+}
+.ctmflag-btn-primary {
+  color: #fff;
+  background: var(--ctmflag-accent);
+}
+.ctmflag-btn-primary:hover {
+  background: var(--ctmflag-accent-strong);
+}
+.ctmflag-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.ctmflag-btn-ghost {
+  color: var(--ctmflag-grey);
+  background: var(--ctmflag-bg-soft);
+}
+.ctmflag-btn-ghost:hover {
+  background: #e7ebf1;
+}
+.ctmflag-btn-danger {
+  color: var(--ctmflag-danger);
+  background: #f8ecea;
+}
+.ctmflag-btn-danger:hover {
+  background: #f3ddd9;
+}
+.ctmflag-editor-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.ctmflag-editor-by {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.ctmflag-editor-when {
+  font-size: 11.5px;
+  color: var(--ctmflag-grey-soft);
+}
+.ctmflag-editor-note {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--ctmflag-bg-soft);
+  border-radius: 6px;
+  padding: 8px 9px;
+}
+
+/* ── Row highlight when "Go to call" is used ────────────────────────────── */
+.ctmflag-highlight,
+.ctmflag-highlight > td {
+  animation: ctmflag-flash 2s ease-out forwards;
+}
+@keyframes ctmflag-flash {
+  0% {
+    background-color: rgba(255, 221, 130, 0.9);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+.ctmflag-toast {
+  box-sizing: border-box;
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  max-width: 360px;
+  font-family: var(--ctmflag-font);
+  font-size: 13px;
+  color: #fff;
+  background: var(--ctmflag-ink);
+  padding: 11px 16px;
+  border-radius: 8px;
+  box-shadow: var(--ctmflag-shadow);
+  z-index: var(--ctmflag-z);
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ctmflag-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

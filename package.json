@@ -1,0 +1,18 @@
+{
+  "name": "ctm-flag",
+  "version": "1.0.0",
+  "description": "Lightweight call annotation tool that injects into Call Tracking Metrics (CTM) and lets your team flag calls with shared, real-time notes.",
+  "private": true,
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch"
+  },
+  "dependencies": {
+    "firebase": "^10.13.2"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^12.0.2",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
