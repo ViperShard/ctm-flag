@@ -57,13 +57,18 @@ npm install
 ### 2. Create a free Firebase project + Firestore database
 
 1. Go to <https://console.firebase.google.com> → **Add project** (the free
-   "Spark" plan is fine; no credit card).
-2. In the new project: **Build → Firestore Database → Create database**.
-   Choose **Start in test mode**, pick a location, **Enable**.
-3. Click the **gear icon → Project settings**.
-4. Under **Your apps**, click the **`</>`** (web) icon to register a web app.
+   "Spark" plan is fine; no credit card). Finish the wizard, then **click the
+   project tile to open it** — the sidebar only appears once you're inside.
+2. In the **left sidebar**, **Build** is a category heading (not a button) —
+   click it to expand, then click **Firestore Database**. (No sidebar? Click
+   the **☰** icon top-left. Fastest shortcut: type `Firestore` in the search
+   bar at the top of the console.)
+3. On the Firestore Database page, click the blue **Create database** button →
+   choose **Start in test mode** → pick a location → **Enable**.
+4. Click the **gear icon → Project settings**.
+5. Under **Your apps**, click the **`</>`** (web) icon to register a web app.
    Give it any nickname. You do **not** need Firebase Hosting.
-5. Firebase shows a `firebaseConfig = { ... }` snippet. Keep that tab open.
+6. Firebase shows a `firebaseConfig = { ... }` snippet. Keep that tab open.
 
 ### 3. Set the Firestore security rules
 
