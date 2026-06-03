@@ -434,7 +434,7 @@ import {
   function injectToolbarButton() {
     if (document.getElementById("ctmflag-toolbar-btn")) return;
 
-    const btn = el("button", "ctmflag-toolbar-btn");
+    const btn = el("button", "ctmflag-toolbar-btn ctmflag-floating");
     btn.id = "ctmflag-toolbar-btn";
     btn.type = "button";
     btn.innerHTML =
@@ -443,22 +443,11 @@ import {
       '<span class="ctmflag-tb-badge" hidden>0</span>';
     btn.addEventListener("click", togglePanel);
 
-    let toolbar = null;
-    try {
-      toolbar = document.querySelector(CTM_SELECTORS.toolbar);
-    } catch (e) {
-      /* ignore */
-    }
-
-    if (toolbar) {
-      btn.classList.add("ctmflag-in-toolbar");
-      toolbar.appendChild(btn);
-    } else {
-      // Fallback so the feature is always reachable even if the toolbar
-      // selector misses: a small floating button, top-right.
-      btn.classList.add("ctmflag-floating");
-      document.body.appendChild(btn);
-    }
+    // Always a fixed, floating launcher so it's guaranteed visible regardless of
+    // CTM's markup. Nesting it inside CTM's toolbar proved unreliable: CTM is a
+    // single-page app that re-renders its header, so a nested button could be
+    // thrown away or land off-screen. A fixed element on <body> can't be lost.
+    (document.body || document.documentElement).appendChild(btn);
   }
 
   function updateBadge() {
