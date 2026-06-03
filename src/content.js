@@ -53,29 +53,32 @@ import {
   };
 
   /* ─────────────────────────────────────────────────────────────────────────
-   *  CTM_CLIENT — how to figure out which CTM "client"/account a call belongs
-   *  to. This powers the Inbox grouping and (later) the per-client access wall.
-   *  Like the selectors above, these are best guesses that get logged to the
-   *  console so they're easy to tune once we see CTM's real URLs/markup.
-   *
-   *    urlPatterns  — regexes tried against the page URL; first capture group
-   *                   becomes the clientId.
-   *    nameSelectors — DOM elements whose text is the human client/account name
-   *                   (e.g. an account switcher).
+   *  CTM_CLIENT — how to figure out which CTM "client" a call is under.
+   *  In CTM you pick the client from a searchable dropdown at the top of the
+   *  page; the CURRENTLY-SELECTED name in that dropdown is the client, and it's
+   *  what every tag is keyed and walled by. These are best-guess selectors for
+   *  that dropdown — the extension logs what it finds (so it's easy to tune),
+   *  and the tag box always lets you correct the client by hand as a safety net.
    * ──────────────────────────────────────────────────────────────────────── */
   const CTM_CLIENT = {
-    urlPatterns: [
-      /[?&]account_id=(\d+)/i,
-      /\/accounts?\/(\d+)/i,
-      /\/clients?\/(\d+)/i,
-      /\/a\/(\d+)/i,
-    ],
+    // Elements whose visible text is the currently-selected client name.
     nameSelectors: [
       "[data-account-name]",
+      ".select2-selection__rendered", // select2 v4
+      ".select2-chosen", // select2 v3
+      ".chosen-single span", // chosen
+      "[class*='singleValue']", // react-select
       ".account-switcher .selected",
       ".current-account",
       ".account-name",
-      ".navbar-brand",
+      ".js-account-name",
+    ],
+    // Native <select> pickers whose selected option is the client name.
+    selectSelectors: [
+      "select[name*='account']",
+      "select[name*='client']",
+      "select#account",
+      "select.account-select",
     ],
   };
 
@@ -160,44 +163,60 @@ import {
   /* ── Which CTM client/account are we looking at? ─────────────────────────── */
 
   function detectClient() {
-    const url = location.href;
-    let clientId = "";
-    for (const re of CTM_CLIENT.urlPatterns) {
-      const m = url.match(re);
-      if (m && m[1]) {
-        clientId = m[1];
-        break;
-      }
-    }
+    const candidates = [];
+    let name = "";
 
-    let clientName = "";
+    // 1) Known "current client" display elements (the dropdown's selected text).
     for (const sel of CTM_CLIENT.nameSelectors) {
       let node = null;
       try {
         node = document.querySelector(sel);
       } catch (e) {}
       if (node) {
-        clientName =
-          (node.getAttribute("data-account-name") || node.textContent || "")
-            .trim()
-            .slice(0, 80);
-        if (clientName) break;
+        const t = (
+          node.getAttribute("data-account-name") ||
+          node.textContent ||
+          ""
+        ).trim();
+        if (t) {
+          candidates.push({ sel: sel, text: t });
+          if (!name) name = t;
+        }
       }
     }
 
-    // Fallbacks so grouping still works even when detection misses.
-    if (!clientId) clientId = clientName || location.hostname;
-    if (!clientName) clientName = clientId || "Unknown client";
+    // 2) Native <select> selected option.
+    for (const sel of CTM_CLIENT.selectSelectors) {
+      let node = null;
+      try {
+        node = document.querySelector(sel);
+      } catch (e) {}
+      if (node && node.selectedOptions && node.selectedOptions[0]) {
+        const t = (node.selectedOptions[0].textContent || "").trim();
+        if (t) {
+          candidates.push({ sel: sel, text: t });
+          if (!name) name = t;
+        }
+      }
+    }
+
+    name = name.replace(/\s+/g, " ").trim().slice(0, 80);
+    const clientName = name || "Unknown client";
+    const clientId = name ? name.toLowerCase() : "unknown";
 
     if (!loggedClientOnce) {
       loggedClientOnce = true;
       console.log(
-        "[CTM Tag] Detected client:",
-        { clientId, clientName },
-        "— if this looks wrong, tune CTM_CLIENT at the top of content.js."
+        "[CTM Tag] client candidates:",
+        candidates.length ? candidates : "(none found)"
+      );
+      console.log(
+        "[CTM Tag] using client:",
+        { clientId: clientId, clientName: clientName },
+        "— if wrong, correct it in the tag box, and tell the dev to tune CTM_CLIENT."
       );
     }
-    return { clientId, clientName };
+    return { clientId: clientId, clientName: clientName };
   }
 
   // Best deep link back to a specific call: prefer a permalink in the row, else
@@ -439,8 +458,29 @@ import {
     if (ta) ta.focus();
   }
 
-  // Editor shown for an UNTAGGED call: textarea + Tag it / Cancel.
+  // Editor shown for an UNTAGGED call: client chip + textarea + Tag it / Cancel.
   function buildNewEditor(pop, callId) {
+    let client = detectClient();
+
+    // Show which client this call will be filed under, with a manual correct.
+    const clientRow = el("div", "ctmflag-client-row");
+    clientRow.appendChild(el("span", "ctmflag-client-label", "Client:"));
+    const clientNameEl = el("span", "ctmflag-client-name", client.clientName);
+    const editClient = el("button", "ctmflag-client-edit", "✎ correct");
+    editClient.type = "button";
+    editClient.title = "Correct the client this call is filed under";
+    editClient.addEventListener("click", () => {
+      const next = (
+        window.prompt("Which client is this call for?", client.clientName) || ""
+      ).trim();
+      if (next) {
+        client = { clientId: next.toLowerCase(), clientName: next };
+        clientNameEl.textContent = next;
+      }
+    });
+    clientRow.appendChild(clientNameEl);
+    clientRow.appendChild(editClient);
+
     const ta = el("textarea", "ctmflag-textarea");
     ta.placeholder = "Note or question about this call...";
     ta.rows = 3;
@@ -459,7 +499,6 @@ import {
       }
       flagBtn.disabled = true;
       const row = findRowByCallId(callId);
-      const client = detectClient();
       const ok = await saveFlag(callId, {
         note: ta.value.trim(),
         taggedBy: name,
@@ -482,6 +521,7 @@ import {
 
     actions.appendChild(cancel);
     actions.appendChild(flagBtn);
+    pop.appendChild(clientRow);
     pop.appendChild(ta);
     pop.appendChild(actions);
   }

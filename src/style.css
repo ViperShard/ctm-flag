@@ -511,3 +511,36 @@
 .ctmflag-action:hover {
   text-decoration: underline;
 }
+
+/* ── Tag box: which client this call is filed under ─────────────────────── */
+.ctmflag-client-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.ctmflag-client-label {
+  color: var(--ctmflag-grey);
+}
+.ctmflag-client-name {
+  font-weight: 700;
+  color: var(--ctmflag-ink);
+  background: var(--ctmflag-bg-soft);
+  border-radius: 6px;
+  padding: 2px 8px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctmflag-client-edit {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--ctmflag-blue);
+}
+.ctmflag-client-edit:hover {
+  text-decoration: underline;
+}
